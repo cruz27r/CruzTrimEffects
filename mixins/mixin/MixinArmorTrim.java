@@ -20,6 +20,8 @@ import java.util.function.Consumer;
 @Mixin(ArmorTrim.class)
 public abstract class MixinArmorTrim {
 
+    //to push
+
     /*
     @Inject(method = "appendTooltip", at = @At("TAIL"))
     private static void trimeffects$afterAppendTooltip(ItemStack stack, DynamicRegistryManager manager, List<Text> tooltip, CallbackInfo info) {

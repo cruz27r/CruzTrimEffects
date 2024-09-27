@@ -26,6 +26,7 @@ public abstract class MixinServerPlayerEntity extends LivingEntity {
         if (trimeffects$ageUpdated < age - 10) {
             trimeffects$ageUpdated = age;
             TrimEffects.getInstance().handleTick((ServerPlayerEntity) (Object) this);
+            // test
         }
     }
 
