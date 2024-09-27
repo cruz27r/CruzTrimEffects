@@ -3,16 +3,19 @@ package dev.foxgirl.trimeffects;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.ai.brain.MemoryModuleType;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.mob.PiglinEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.trim.ArmorTrim;
 import net.minecraft.item.trim.ArmorTrimMaterial;
-import net.minecraft.item.trim.ArmorTrimPattern;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -59,11 +62,6 @@ public final class TrimEffects {
 
     public static @Nullable ArmorTrim getTrim(@NotNull DynamicRegistryManager manager, @NotNull ItemStack stack) {
         return stack.get(DataComponentTypes.TRIM);
-        /*
-        var nbt = stack.getSubNbt("Trim");
-        if (nbt == null || !stack.isIn(ItemTags.TRIMMABLE_ARMOR)) return null;
-        return ArmorTrim.CODEC.parse(RegistryOps.of(NbtOps.INSTANCE, manager), nbt).result().orElse(null);
-        */
     }
 
     private record Trim(@NotNull ArmorTrim trim) {
@@ -72,9 +70,6 @@ public final class TrimEffects {
             return trim == null ? null : new Trim(trim);
         }
 
-        private @NotNull RegistryEntry<ArmorTrimPattern> getPattern() {
-            return trim.getPattern();
-        }
         private @NotNull RegistryEntry<ArmorTrimMaterial> getMaterial() {
             return trim.getMaterial();
         }
@@ -84,8 +79,7 @@ public final class TrimEffects {
             if (obj == this) return true;
             if (obj == null || getClass() != obj.getClass()) return false;
             var that = (Trim) obj;
-            return Objects.equals(this.getPattern(), that.getPattern())
-                && Objects.equals(this.getMaterial(), that.getMaterial());
+            return Objects.equals(this.getMaterial(), that.getMaterial());
         }
     }
 
@@ -99,74 +93,155 @@ public final class TrimEffects {
             trims[i] = Trim.from(manager, armor.get(i));
         }
 
-        for (Trim trim : trims) {
-            if (trim == null) {
-                continue;
-            }
-            if (getConfig().isEnableCombinedEffects()) {
-                if (Arrays.stream(trims).anyMatch(t -> t != null && !trim.equals(t) && trim.getPattern().equals(t.getPattern()))) {
-                    continue;
-                }
-            } else {
-                if (Arrays.stream(trims).anyMatch(t -> t != null && !trim.equals(t))) {
-                    continue;
+        boolean fullSet = Arrays.stream(trims).allMatch(Objects::nonNull); // Check if all armor pieces have trims
+        if (fullSet) {
+            for (Trim trim : trims) {
+                if (trim == null) continue;
+                int count = (int) Arrays.stream(trims).filter(t -> Objects.equals(t, trim)).count();
+                if (count >= getConfig().getMinimumMatchingTrims()) {
+                    handleTickForTrim(player, trim);
                 }
             }
-            int count = (int) Arrays.stream(trims).filter(t -> Objects.equals(t, trim)).count();
-            if (count >= getConfig().getMinimumMatchingTrims()) {
-                handleTickForTrim(player, trim);
-            }
+        } else {
+            removeAllEffects(player); // Remove effects if the full set isn't worn
         }
     }
 
-    private final Map<UUID, Integer> absorptionStunTicks = new HashMap<>();
+    // Method to remove all effects applied by armor
+    private void removeAllEffects(LivingEntity player) {
+        player.removeStatusEffect(StatusEffects.SPEED);
+        player.removeStatusEffect(StatusEffects.STRENGTH);
+        player.removeStatusEffect(StatusEffects.HASTE);
+        player.removeStatusEffect(StatusEffects.REGENERATION);
+        player.removeStatusEffect(StatusEffects.FIRE_RESISTANCE);
+        player.removeStatusEffect(StatusEffects.NIGHT_VISION);
+        player.removeStatusEffect(StatusEffects.HERO_OF_THE_VILLAGE);
+        player.removeStatusEffect(StatusEffects.RESISTANCE);
+        player.removeStatusEffect(StatusEffects.LUCK);
+        player.removeStatusEffect(StatusEffects.DOLPHINS_GRACE);
+    }
 
     private void handleTickForTrim(LivingEntity player, Trim trim) {
         var manager = getRegistryManager(player);
-
-        var pattern = getKey(trim.getPattern());
         var material = getKey(trim.getMaterial());
 
-        var effect = getConfig().getEffects().get(pattern);
-        var strength = getConfig().getStrengths().get(material);
-
-        int durationMaximum = (int) ((getConfig().getSecondsMaximum() + 0.75) * 20.0);
-        int durationMinimum = (int) ((getConfig().getSecondsMinimum() + 0.75) * 20.0);
-
-        if (effect != null && strength != null && strength > 0) {
-            int amplifier = strength - 1;
-            var effectTypeEntryOptional = manager.get(RegistryKeys.STATUS_EFFECT).getEntry(effect);
-            if (effectTypeEntryOptional.isPresent()) {
-                var effectTypeEntry = effectTypeEntryOptional.get();
-                var effectInstance = player.getStatusEffect(effectTypeEntry);
-                if (
-                    effectInstance == null ||
-                    effectInstance.getAmplifier() < amplifier ||
-                    effectInstance.isDurationBelow(durationMinimum)
-                ) {
-                    if (effectTypeEntry.matches(StatusEffects.ABSORPTION)) {
-                        var stunTicks = absorptionStunTicks.get(player.getUuid());
-                        if (stunTicks != null && stunTicks > 0) {
-                            absorptionStunTicks.put(player.getUuid(), stunTicks - 1);
-                            return;
-                        }
-                        if (effectInstance != null && player.getAbsorptionAmount() < player.getMaxAbsorption()) {
-                            absorptionStunTicks.put(player.getUuid(), (int) (getConfig().getAbsorptionStunSeconds() * 2.0));
-                            return;
-                        }
-                    }
-                    if (effectTypeEntry.matches(StatusEffects.REGENERATION)) {
-                        if (
-                            effectInstance != null && !effectInstance.isDurationBelow(50) &&
-                            player.getHealth() < player.getMaxHealth()
-                        ) {
-                            return;
-                        }
-                    }
-                    player.addStatusEffect(new StatusEffectInstance(effectTypeEntry, durationMaximum, amplifier), player);
-                }
-            }
+        switch (material.getValue().toString()) {
+            case "minecraft:diamond":
+                applyDiamondEffect(player);
+                break;
+            case "minecraft:netherite":
+                applyNetheriteEffect(player);
+                break;
+            case "minecraft:redstone":
+                applyRedstoneEffect(player);
+                break;
+            case "minecraft:quartz":
+                applyQuartzEffect(player);
+                break;
+            case "minecraft:emerald":
+                applyEmeraldEffect(player);
+                break;
+            case "minecraft:lapis_lazuli":
+                applyLapisEffect(player);
+                break;
+            case "minecraft:copper":
+                applyCopperEffect(player);
+                break;
+            case "minecraft:iron":
+                applyIronEffect(player);
+                break;
+            case "minecraft:gold":
+                applyGoldEffect(player);
+                break;
+            default:
+                break;
         }
     }
 
+    // Redstone Trim Effects (Enhanced)
+    private static void applyRedstoneEffect(LivingEntity player) {
+        if (player.hurtTime > 0) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 100, 0));  // Speed I for 5 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 100, 0));  // Strength I for 5 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 60, 0));  // Haste I for 3 seconds
+        }
+    }
+
+    // Quartz Trim Effects (New)
+    private static void applyQuartzEffect(LivingEntity player) {
+        if (player.getWorld().getRegistryKey() == World.NETHER) {  // Nether check
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 200, 0));  // Regeneration I for 10 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 600, 0));  // Fire Resistance for 30 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 200, 0));  // Strength I in the Nether
+        }
+    }
+
+    // Emerald Trim Effects (New)
+    private static void applyEmeraldEffect(LivingEntity player) {
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HERO_OF_THE_VILLAGE, 600, 0));  // Hero of the Village
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 100, 0));  // Resistance I for 5 seconds when trading
+    }
+
+    // Lapis Trim Effects (Improved XP, Luck, and Dolphin's Grace)
+    private static void applyLapisEffect(LivingEntity player) {
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 600, 0));  // Luck I for 30 seconds
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.DOLPHINS_GRACE, 600, 0));  // Dolphin's Grace for swimming
+
+        // Give XP bonus (25% boost)
+//        if (player.getWorld() instanceof ServerWorld) {
+//            int xpBonus = (int) (player.totalExperience * 0.25);  // 25% XP boost
+//            player.addExperience(xpBonus);
+//        }
+    }
+
+    // Copper Trim Effects
+    private static void applyCopperEffect(LivingEntity player) {
+        if (player.getWorld().isThundering() && player.getWorld().random.nextFloat() < 0.05f) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 600, 1));  // Strength I for 30 seconds
+        }
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 200, 1));  // Resistance I for 10 seconds
+    }
+
+    // Iron Trim Effects
+    private static void applyIronEffect(LivingEntity player) {
+        if (player.getHealth() < 6.0F) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 200, 0));  // Resistance I
+        }
+    }
+
+    // Diamond Trim Effects
+    private static void applyDiamondEffect(LivingEntity player) {
+        if (player.getBlockY() < 63) {  // Check if player is underground
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.NIGHT_VISION, 2400, 0));  // Night Vision for 2 minutes
+        }
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 2400, 1));  // Haste II
+    }
+
+    // Netherite Trim Effects
+    private static void applyNetheriteEffect(LivingEntity player) {
+        if (player.isInLava() || player.isOnFire()) {
+            player.heal(1.0F);  // Heal 1 health point (half a heart)
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 200, 1));  // Resistance II for 10 seconds
+        }
+    }
+
+    // Gold Trim Effects
+    private static void applyGoldEffect(LivingEntity player) {
+        // Get all nearby Piglins within 10 blocks
+        List<PiglinEntity> nearbyPiglins = player.getWorld().getEntitiesByClass(PiglinEntity.class,
+            player.getBoundingBox().expand(10), entity -> entity instanceof PiglinEntity);
+
+        // For each Piglin, make sure they stop attacking
+        for (PiglinEntity piglin : nearbyPiglins) {
+            // Get Piglin's brain and reset its attack target
+            var piglinBrain = piglin.getBrain();
+            if (piglinBrain != null) {
+                piglinBrain.forget(MemoryModuleType.ATTACK_TARGET);
+                piglinBrain.remember(MemoryModuleType.ADMIRING_ITEM, true);  // Piglins admire the gold armor
+            }
+
+            // Prevent Piglins from attacking the player
+            piglin.setAttacking(null);
+        }
+    }
 }
