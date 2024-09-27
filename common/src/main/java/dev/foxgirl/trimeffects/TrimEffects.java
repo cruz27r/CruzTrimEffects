@@ -160,44 +160,42 @@ public final class TrimEffects {
         }
     }
 
-    // Redstone Trim Effects (Enhanced)
+    // Redstone Trim Effects (Enhanced, now 15 seconds max)
     private static void applyRedstoneEffect(LivingEntity player) {
         if (player.hurtTime > 0) {
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 100, 0));  // Speed I for 5 seconds
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 100, 0));  // Strength I for 5 seconds
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 60, 0));  // Haste I for 3 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 300, 0));  // Speed I for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 300, 0));  // Strength I for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 0));  // Haste I for 15 seconds
         }
     }
 
-    // Quartz Trim Effects (New)
+    // Quartz Trim Effects (15 seconds max in Nether)
     private static void applyQuartzEffect(LivingEntity player) {
         if (player.getWorld().getRegistryKey() == World.NETHER) {  // Nether check
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 200, 0));  // Regeneration I for 10 seconds
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 600, 0));  // Fire Resistance for 30 seconds
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 200, 0));  // Strength I in the Nether
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 300, 0));  // Regeneration I for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 300, 0));  // Fire Resistance for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 300, 0));  // Strength I for 15 seconds
         }
     }
 
-    // Emerald Trim Effects (New) - Hero of the Village only when near a Villager
+    // Emerald Trim Effects (New, reduced to 15 seconds)
     private static void applyEmeraldEffect(LivingEntity player) {
-        // Check if the player is near a villager (within 10 blocks)
         List<VillagerEntity> nearbyVillagers = player.getWorld().getEntitiesByClass(VillagerEntity.class,
             player.getBoundingBox().expand(10), entity -> entity instanceof VillagerEntity);
 
-        // Only apply Hero of the Village effect if there is a villager nearby
         if (!nearbyVillagers.isEmpty()) {
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HERO_OF_THE_VILLAGE, 600, 0));  // Hero of the Village
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 100, 0));  // Resistance I for 5 seconds when trading
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HERO_OF_THE_VILLAGE, 300, 0));  // Hero of the Village
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 0));  // Resistance I for 15 seconds when trading
         }
     }
 
-    // Lapis Trim Effects (Improved XP, Luck, and Dolphin's Grace)
+    // Lapis Trim Effects (Improved XP, Luck, and Dolphin's Grace based on air bubbles)
     private static void applyLapisEffect(LivingEntity player) {
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 600, 0));  // Luck I for 30 seconds
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 300, 0));  // Luck I for 15 seconds
 
-        // Apply Dolphin's Grace only when in water
-        if (player.isSubmergedInWater()) {  // Changed to a more reliable check for water
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.DOLPHINS_GRACE, 600, 0));  // Dolphin's Grace for swimming
+        // Check if the player is underwater by monitoring the air levels
+        if (player.getAir() < player.getMaxAir()) {  // Check if the player is losing air (underwater)
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.DOLPHINS_GRACE, 300, 0));  // Dolphin's Grace for 15 seconds
         }
 
         // Apply 50% XP boost
@@ -208,54 +206,51 @@ public final class TrimEffects {
         }
     }
 
-    // Copper Trim Effects
+
+    // Copper Trim Effects (Reduced duration)
     private static void applyCopperEffect(LivingEntity player) {
         if (player.getWorld().isThundering() && player.getWorld().random.nextFloat() < 0.05f) {
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 600, 1));  // Strength I for 30 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 300, 1));  // Strength I for 15 seconds
         }
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 200, 1));  // Resistance I for 10 seconds
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 1));  // Resistance I for 15 seconds
     }
 
-    // Iron Trim Effects
+    // Iron Trim Effects (Reduced to 15 seconds)
     private static void applyIronEffect(LivingEntity player) {
         if (player.getHealth() < 6.0F) {
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 200, 0));  // Resistance I
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 0));  // Resistance I for 15 seconds
         }
     }
 
-    // Diamond Trim Effects
+    // Diamond Trim Effects (Night Vision and Haste reduced to 15 seconds)
     private static void applyDiamondEffect(LivingEntity player) {
         if (player.getBlockY() < 63) {  // Check if player is underground
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.NIGHT_VISION, 2400, 0));  // Night Vision for 2 minutes
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.NIGHT_VISION, 300, 0));  // Night Vision for 15 seconds
         }
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 2400, 1));  // Haste II
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 1));  // Haste II for 15 seconds
     }
 
-    // Netherite Trim Effects
+    // Netherite Trim Effects (Reduced to 15 seconds)
     private static void applyNetheriteEffect(LivingEntity player) {
         if (player.isInLava() || player.isOnFire()) {
             player.heal(1.0F);  // Heal 1 health point (half a heart)
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 200, 1));  // Resistance II for 10 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 1));  // Resistance II for 15 seconds
         }
     }
 
     // Gold Trim Effects
     private static void applyGoldEffect(LivingEntity player) {
-        // Get all nearby Piglins within 10 blocks
         List<PiglinEntity> nearbyPiglins = player.getWorld().getEntitiesByClass(PiglinEntity.class,
             player.getBoundingBox().expand(10), entity -> entity instanceof PiglinEntity);
 
-        // For each Piglin, make sure they stop attacking
         for (PiglinEntity piglin : nearbyPiglins) {
-            // Get Piglin's brain and reset its attack target
             var piglinBrain = piglin.getBrain();
             if (piglinBrain != null) {
                 piglinBrain.forget(MemoryModuleType.ATTACK_TARGET);
                 piglinBrain.remember(MemoryModuleType.ADMIRING_ITEM, true);  // Piglins admire the gold armor
             }
 
-            // Prevent Piglins from attacking the player
-            piglin.setAttacking(null);
+            piglin.setAttacking(null);  // Prevent Piglins from attacking the player
         }
     }
 }
