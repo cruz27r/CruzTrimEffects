@@ -191,13 +191,12 @@ public final class TrimEffects {
         }
     }
 
-
     // Lapis Trim Effects (Improved XP, Luck, and Dolphin's Grace)
     private static void applyLapisEffect(LivingEntity player) {
         player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 600, 0));  // Luck I for 30 seconds
 
         // Apply Dolphin's Grace only when in water
-        if (player.isTouchingWater()) {
+        if (player.isSubmergedInWater()) {  // Changed to a more reliable check for water
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.DOLPHINS_GRACE, 600, 0));  // Dolphin's Grace for swimming
         }
 
@@ -208,7 +207,6 @@ public final class TrimEffects {
             playerEntity.addExperience(xpBonus);  // Apply the XP boost
         }
     }
-
 
     // Copper Trim Effects
     private static void applyCopperEffect(LivingEntity player) {
