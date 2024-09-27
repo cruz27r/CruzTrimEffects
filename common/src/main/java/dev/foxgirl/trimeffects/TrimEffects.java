@@ -7,6 +7,8 @@ import net.minecraft.entity.ai.brain.MemoryModuleType;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.mob.PiglinEntity;
+import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.trim.ArmorTrim;
 import net.minecraft.item.trim.ArmorTrimMaterial;
@@ -176,23 +178,37 @@ public final class TrimEffects {
         }
     }
 
-    // Emerald Trim Effects (New)
+    // Emerald Trim Effects (New) - Hero of the Village only when near a Villager
     private static void applyEmeraldEffect(LivingEntity player) {
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HERO_OF_THE_VILLAGE, 600, 0));  // Hero of the Village
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 100, 0));  // Resistance I for 5 seconds when trading
+        // Check if the player is near a villager (within 10 blocks)
+        List<VillagerEntity> nearbyVillagers = player.getWorld().getEntitiesByClass(VillagerEntity.class,
+            player.getBoundingBox().expand(10), entity -> entity instanceof VillagerEntity);
+
+        // Only apply Hero of the Village effect if there is a villager nearby
+        if (!nearbyVillagers.isEmpty()) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HERO_OF_THE_VILLAGE, 600, 0));  // Hero of the Village
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 100, 0));  // Resistance I for 5 seconds when trading
+        }
     }
+
 
     // Lapis Trim Effects (Improved XP, Luck, and Dolphin's Grace)
     private static void applyLapisEffect(LivingEntity player) {
         player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 600, 0));  // Luck I for 30 seconds
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.DOLPHINS_GRACE, 600, 0));  // Dolphin's Grace for swimming
 
-        // Give XP bonus (25% boost)
-//        if (player.getWorld() instanceof ServerWorld) {
-//            int xpBonus = (int) (player.totalExperience * 0.25);  // 25% XP boost
-//            player.addExperience(xpBonus);
-//        }
+        // Apply Dolphin's Grace only when in water
+        if (player.isTouchingWater()) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.DOLPHINS_GRACE, 600, 0));  // Dolphin's Grace for swimming
+        }
+
+        // Apply 50% XP boost
+        if (player instanceof PlayerEntity) {
+            PlayerEntity playerEntity = (PlayerEntity) player;
+            int xpBonus = (int) (playerEntity.experienceProgress * 0.50 * playerEntity.getNextLevelExperience());
+            playerEntity.addExperience(xpBonus);  // Apply the XP boost
+        }
     }
+
 
     // Copper Trim Effects
     private static void applyCopperEffect(LivingEntity player) {
