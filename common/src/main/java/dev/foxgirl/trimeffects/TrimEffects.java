@@ -160,7 +160,7 @@ public final class TrimEffects {
         }
     }
 
-    // Redstone Trim Effects (Enhanced, now 15 seconds max)
+    // Redstone Trim Effects (Enhanced)
     private static void applyRedstoneEffect(LivingEntity player) {
         if (player.hurtTime > 0) {
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 300, 0));  // Speed I for 15 seconds
@@ -169,29 +169,29 @@ public final class TrimEffects {
         }
     }
 
-    // Quartz Trim Effects (15 seconds max in Nether)
+    // Quartz Trim Effects
     private static void applyQuartzEffect(LivingEntity player) {
         if (player.getWorld().getRegistryKey() == World.NETHER) {  // Nether check
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 300, 0));  // Regeneration I for 15 seconds
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 300, 0));  // Fire Resistance for 15 seconds
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 300, 0));  // Strength I for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 0));  // Blast Resistance I for 15 seconds in Nether
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 1));  // Haste II for 15 seconds
         }
     }
 
-    // Emerald Trim Effects (New, reduced to 15 seconds)
+    // Emerald Trim Effects (Hero of the Village only when near a Villager)
     private static void applyEmeraldEffect(LivingEntity player) {
         List<VillagerEntity> nearbyVillagers = player.getWorld().getEntitiesByClass(VillagerEntity.class,
             player.getBoundingBox().expand(10), entity -> entity instanceof VillagerEntity);
 
         if (!nearbyVillagers.isEmpty()) {
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HERO_OF_THE_VILLAGE, 300, 0));  // Hero of the Village
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 0));  // Resistance I for 15 seconds when trading
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HERO_OF_THE_VILLAGE, 300, 0));  // Hero of the Village for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 0));  // Resistance I for 15 seconds when near Villager
         }
     }
 
-    // Lapis Trim Effects (Improved XP, Luck, and Dolphin's Grace based on air bubbles)
+    // Lapis Trim Effects
     private static void applyLapisEffect(LivingEntity player) {
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 300, 0));  // Luck I for 15 seconds
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 300, 1));  // Luck II for 15 seconds
 
         // Check if the player is underwater by monitoring the air levels
         if (player.getAir() < player.getMaxAir()) {  // Check if the player is losing air (underwater)
@@ -206,23 +206,28 @@ public final class TrimEffects {
         }
     }
 
-
-    // Copper Trim Effects (Reduced duration)
+    // Copper Trim Effects
     private static void applyCopperEffect(LivingEntity player) {
         if (player.getWorld().isThundering() && player.getWorld().random.nextFloat() < 0.05f) {
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 300, 1));  // Strength I for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 600, 1));  // Strength II for 5 minutes
         }
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 1));  // Resistance I for 15 seconds
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 600, 1));  // Speed II for 5 minutes
     }
 
-    // Iron Trim Effects (Reduced to 15 seconds)
+    // Iron Trim Effects
     private static void applyIronEffect(LivingEntity player) {
         if (player.getHealth() < 6.0F) {
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 0));  // Resistance I for 15 seconds
         }
+        if (player.getHealth() < (player.getMaxHealth() / 2)) {  // If player is below 50% health
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.STRENGTH, 300, 0));  // Increased attack damage when below 50% health
+        }
+        if (player.getBlockY() < 64) {  // If player is underground (below Y level 64)
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 200, 0));  // Haste I for 10 seconds for mining
+        }
     }
 
-    // Diamond Trim Effects (Night Vision and Haste reduced to 15 seconds)
+    // Diamond Trim Effects
     private static void applyDiamondEffect(LivingEntity player) {
         if (player.getBlockY() < 63) {  // Check if player is underground
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.NIGHT_VISION, 300, 0));  // Night Vision for 15 seconds
@@ -230,11 +235,11 @@ public final class TrimEffects {
         player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 1));  // Haste II for 15 seconds
     }
 
-    // Netherite Trim Effects (Reduced to 15 seconds)
+    // Netherite Trim Effects
     private static void applyNetheriteEffect(LivingEntity player) {
         if (player.isInLava() || player.isOnFire()) {
             player.heal(1.0F);  // Heal 1 health point (half a heart)
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.RESISTANCE, 300, 1));  // Resistance II for 15 seconds
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 300, 0));  // Fire Resistance for 15 seconds if burning
         }
     }
 
@@ -251,6 +256,11 @@ public final class TrimEffects {
             }
 
             piglin.setAttacking(null);  // Prevent Piglins from attacking the player
+        }
+
+        // Bonus Luck I during bartering with Piglins
+        if (player instanceof PlayerEntity) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 300, 0));  // Luck I for 15 seconds during bartering
         }
     }
 }
