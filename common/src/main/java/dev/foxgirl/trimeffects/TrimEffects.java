@@ -1,5 +1,6 @@
 package dev.foxgirl.trimeffects;
 
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.component.DataComponentTypes;
@@ -7,15 +8,16 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.entity.mob.PiglinEntity;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.item.trim.ArmorTrim;
 import net.minecraft.item.trim.ArmorTrimMaterial;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
@@ -27,6 +29,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+
+import static com.mojang.text2speech.Narrator.LOGGER;
 
 public final class TrimEffects {
 
@@ -141,7 +145,7 @@ public final class TrimEffects {
             case "minecraft:gold":
                 applyGoldEffect(player);
                 break;
-            case "minecraft:amethyst": // Amethyst Trim Effect
+            case "minecraft:amethyst":
                 applyAmethystEffect(player);
                 break;
             default:
@@ -149,81 +153,66 @@ public final class TrimEffects {
         }
     }
 
-    // Method to check if near a beacon with Haste II
-    private static boolean isNearHaste2Beacon(LivingEntity player) {
-        BlockPos pos = player.getBlockPos();
-        int radius = 50;  // Set range for detecting the beacon
-        for (BlockPos beaconPos : BlockPos.iterateOutwards(pos, radius, radius, radius)) {
-            BlockState state = player.getWorld().getBlockState(beaconPos);
-            if (state.isOf(Blocks.BEACON)) {
-                // Assuming the beacon has Haste II for simplicity
-                LOGGER.info("Beacon with Haste II detected nearby");
-                return true;
-            }
-        }
-        LOGGER.info("No Haste II Beacon found nearby");
-        return false;
-    }
-
-    // Check if the block is a Deepslate variant or Deepslate Ore
-    private static boolean isDeepslateVariant(BlockState blockState) {
-        return blockState.isOf(Blocks.DEEPSLATE)
-            || blockState.isOf(Blocks.DEEPSLATE_COAL_ORE)
-            || blockState.isOf(Blocks.DEEPSLATE_COPPER_ORE)
-            || blockState.isOf(Blocks.DEEPSLATE_DIAMOND_ORE)
-            || blockState.isOf(Blocks.DEEPSLATE_EMERALD_ORE)
-            || blockState.isOf(Blocks.DEEPSLATE_GOLD_ORE)
-            || blockState.isOf(Blocks.DEEPSLATE_IRON_ORE)
-            || blockState.isOf(Blocks.DEEPSLATE_LAPIS_ORE)
-            || blockState.isOf(Blocks.DEEPSLATE_REDSTONE_ORE);
-    }
-
     // Method to check if the player is in a cave (below y-level 45 or in low light)
     private static boolean isInCave(LivingEntity player) {
         return player.getBlockY() < 45 || player.getWorld().getLightLevel(player.getBlockPos()) < 7;  // Low light level indicating a cave
     }
 
+    // Method to check if the player is near a Haste II beacon
+    private static boolean isNearHaste2Beacon(PlayerEntity player) {
+        BlockPos pos = player.getBlockPos();
+        int radius = 50;  // Set range for detecting the beacon
+        for (BlockPos beaconPos : BlockPos.iterateOutwards(pos, radius, radius, radius)) {
+            BlockState state = player.getWorld().getBlockState(beaconPos);
+            if (state.isOf(Blocks.BEACON)) {
+                LOGGER.info("Beacon with Haste II detected nearby");
+                return true;  // Assuming the beacon has Haste II for simplicity
+            }
+        }
+        return false;
+    }
 
     // Diamond Trim Effects
     private static void applyDiamondEffect(LivingEntity player) {
         // Always apply Haste II
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 1, false, true));  // Haste II
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 2, false, true));  // Haste III
 
         // Apply Night Vision when the player is below y-level 45 or in a cave
-        if (player.getBlockY() < 45 || isInCave(player)) {
+        if (isInCave(player)) {
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.NIGHT_VISION, 300, 0, false, true));  // Night Vision
             LOGGER.info("Diamond Trim: Night Vision applied due to being in a cave or below level 45");
         }
 
-        // Check if near Haste II beacon for instant mining of deepslate
-        if (isNearHaste2Beacon(player)) {
-            BlockPos blockPos = player.getBlockPos().down();
-            BlockState blockState = player.getWorld().getBlockState(blockPos);
-
-            if (isDeepslateVariant(blockState)) {
-                // Simulate instant mining of deepslate by reducing hardness to match stone
-                blockState.getBlock().setHardness(Blocks.STONE.getHardness());
-                LOGGER.info("Diamond Trim: Instant mining applied for Deepslate due to Haste II beacon");
-            }
+        // Apply Haste III when near a Haste II beacon
+        if (isNearHaste2Beacon((PlayerEntity) player)) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 2, false, true));  // Haste III
+            LOGGER.info("Diamond Trim: Haste III applied due to being near a Haste II beacon.");
         }
     }
 
 
     // Gold Trim Effects
     private static void applyGoldEffect(LivingEntity player) {
-        // Always apply Haste II and Luck I
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 1, false, true));  // Haste II
-        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 300, 0, false, true));  // Constant Luck I
+        // Always apply Luck II
+        player.addStatusEffect(new StatusEffectInstance(StatusEffects.LUCK, 300, 1, false, true));  // Constant Luck II
 
-        // Check if near Haste II beacon for instant mining of deepslate
-        if (isNearHaste2Beacon(player)) {
-            BlockPos blockPos = player.getBlockPos().down();
-            BlockState blockState = player.getWorld().getBlockState(blockPos);
+        // Apply Haste III when near a Haste II beacon and below y-level 0
+        if (player.getBlockY() < 0 && isNearHaste2Beacon((PlayerEntity) player)) {
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.HASTE, 300, 3, false,
+                true));  // Haste III
+            LOGGER.info("Gold Trim: Haste III applied due to being near a Haste II beacon and below y-level 0.");
+        }
 
-            if (isDeepslateVariant(blockState)) {
-                // Simulate instant mining of deepslate by reducing hardness to match stone
-                blockState.getBlock().setHardness(Blocks.STONE.getHardness());
-                LOGGER.info("Gold Trim: Instant mining applied for Deepslate due to Haste II beacon");
+        // Prevent Piglins from attacking the player
+        if (player instanceof PlayerEntity) {
+            List<PiglinEntity> nearbyPiglins = player.getWorld().getEntitiesByClass(PiglinEntity.class,
+                player.getBoundingBox().expand(10), piglin -> true);
+            for (PiglinEntity piglin : nearbyPiglins) {
+                if (piglin.isAngryAt((PlayerEntity) player)) {
+                    piglin.setAttacking(null);  // Stop attacking the player
+                    piglin.setTarget(null);     // Clear the target
+                    LOGGER.info("Gold Trim: Preventing Piglins from attacking the player due to Gold Trim effect.");
+                }
             }
         }
     }
@@ -231,10 +220,17 @@ public final class TrimEffects {
 
     // Amethyst Trim Effects
     private static void applyAmethystEffect(LivingEntity player) {
-        // Apply speed boost while sprinting
+        // Apply increasing speed boost while sprinting
         if (player.isSprinting()) {
-            player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 300, 2, false, true));  // Speed III when sprinting
-            LOGGER.info("Amethyst Trim: Speed boost applied while sprinting");
+            // Max out at Speed III (2)
+            int currentSpeedLevel = 0;
+            StatusEffectInstance speedEffect = player.getStatusEffect(StatusEffects.SPEED);
+            if (speedEffect != null) {
+                currentSpeedLevel = speedEffect.getAmplifier();
+            }
+            int newSpeedLevel = Math.min(currentSpeedLevel + 1, 2);  // Speed III is level 2
+            player.addStatusEffect(new StatusEffectInstance(StatusEffects.SPEED, 300, newSpeedLevel, false, true));  // Increase speed level
+            LOGGER.info("Amethyst Trim: Speed boost increased to level " + (newSpeedLevel + 1) + " while sprinting");
         }
 
         // Apply damage reduction
